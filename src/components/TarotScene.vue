@@ -61,8 +61,7 @@
     </div>
 
     <!-- 卡牌名称揭示动画层 -->
-    <div ref="cardNameReveal" id="card-name-reveal"
-      :class="{ showing: result.showNameReveal, show: result.showSublimation }">
+    <div ref="cardNameReveal" id="card-name-reveal" :class="{ showing: result.showNameReveal }">
       {{ result.revealName }}
     </div>
 
@@ -151,8 +150,7 @@ const result = reactive({
   meaning: "",             // 卡牌含义
   isReversed: false,       // 是否是逆位
   revealName: "",          // 揭示动画中的名称
-  showNameReveal: false,   // 是否显示大字揭示动画
-  showSublimation: false   // 是否处于“升华”（消失）动画阶段
+  showNameReveal: false    // 是否显示大字揭示动画
 });
 
 // --- DOM 引用 (Template Refs) ---
@@ -163,7 +161,6 @@ const inputVideo = ref(null);      // 摄像头视频源
 
 // --- Three.js 核心变量 ---
 let scene, camera, renderer, starfield, textureLoader, backTexture;
-let starlights = [];               // 存放所有的粒子特效实例
 let animationId;                   // requestAnimationFrame 的 ID
 let cardGroup;                     // 专门存放卡牌的容器（Group），方便批量管理和清理
 let currentLoadId = 0;             // 异步加载 ID，用于解决“异步竞态”问题（防止旧卡牌在清理后又冒出来）
@@ -262,113 +259,6 @@ class Starfield {
     this.geometry.attributes.position.needsUpdate = true;
     // 星星闪烁效果
     this.material.opacity = 0.6 + Math.sin(time) * 0.2;
-  }
-}
-
-// --- 内部类：星光升华粒子系统 ---
-/**
- * 【详细解释粒子特效逻辑】
- * 
- * 当用户抽中一张卡牌并选择“升华”时，卡牌会崩解为 2500 个上升的粒子。
- * 1. 初始位置：粒子随机分布在原卡牌的长方形区域内。
- * 2. 运动轨迹：每个粒子有自己的初速度，且在 update 中会加入 Sin 波动的扰动，模拟轻飘飘的灵感升腾感。
- * 3. 生命周期：每个粒子有 life 属性，随时间减少，同时 opacity 也会降低。
- * 4. 资源释放：当所有粒子都不可见时，会自动从 scene 中 remove 并调用 dispose 销毁几何体和材质，防止显存泄漏。
- */
-class StarlightEffect {
-  constructor(position) {
-    this.particlesCount = 2500;
-    this.geometry = new THREE.BufferGeometry();
-    const positions = [];
-    const velocities = [];
-    const colors = [];
-    const life = [];
-
-    const w = 4.0, h = 5.5; // 卡牌的大致尺寸
-    for (let i = 0; i < this.particlesCount; i++) {
-      // 粒子初始位置限制在卡牌区域内
-      positions.push(
-        position.x + (Math.random() - 0.5) * w,
-        position.y + (Math.random() - 0.5) * h,
-        position.z + (Math.random() - 0.5) * 0.2
-      );
-
-      // 赋予粒子向上的速度
-      const speed = 0.02 + Math.random() * 0.05;
-      velocities.push(
-        (Math.random() - 0.5) * 0.02,
-        speed * 1.5 + 0.01,
-        (Math.random() - 0.5) * 0.02
-      );
-
-      // 粒子颜色（金、白、紫）
-      const colorChoice = Math.random();
-      if (colorChoice < 0.5) {
-        colors.push(1.0, 0.9, 0.5);
-      } else if (colorChoice < 0.8) {
-        colors.push(1.0, 1.0, 1.0);
-      } else {
-        colors.push(0.9, 0.7, 1.0);
-      }
-
-      life.push(1.0 + Math.random() * 1.2); // 粒子的寿命
-    }
-
-    this.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    this.geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
-    this.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    this.geometry.setAttribute('life', new THREE.Float32BufferAttribute(life, 1));
-
-    this.material = new THREE.PointsMaterial({
-      size: 0.12,
-      transparent: true,
-      opacity: 1,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-
-    this.mesh = new THREE.Points(this.geometry, this.material);
-    this.mesh.frustumCulled = false;
-    this.startTime = Date.now();
-    scene.add(this.mesh);
-  }
-
-  update() {
-    const positions = this.geometry.attributes.position.array;
-    const velocities = this.geometry.attributes.velocity.array;
-    const lives = this.geometry.attributes.life.array;
-    let alive = false;
-    const elapsed = (Date.now() - this.startTime) * 0.001;
-
-    for (let i = 0; i < this.particlesCount; i++) {
-      if (lives[i] > 0) {
-        alive = true;
-        // 应用速度，让粒子飘起来
-        positions[i * 3] += velocities[i * 3];
-        positions[i * 3 + 1] += velocities[i * 3 + 1];
-        positions[i * 3 + 2] += velocities[i * 3 + 2];
-
-        // 加入正弦波动的效果，模拟随风飘动的灵感
-        const wave = elapsed * 2 + i * 0.05;
-        positions[i * 3] += Math.sin(wave) * 0.005;
-        positions[i * 3 + 2] += Math.cos(wave) * 0.005;
-
-        lives[i] -= 0.004; // 扣除寿命
-      }
-    }
-
-    this.material.opacity = Math.max(0, this.material.opacity - 0.004);
-    this.geometry.attributes.position.needsUpdate = true;
-
-    // 粒子全部死掉后，从场景中移除自己，释放资源
-    if (!alive || this.material.opacity <= 0) {
-      scene.remove(this.mesh);
-      this.geometry.dispose();
-      this.material.dispose();
-      return false;
-    }
-    return true;
   }
 }
 
@@ -656,9 +546,8 @@ const getCenterCard = () => {
 const animate = () => {
   animationId = requestAnimationFrame(animate);
 
-  // 1. 更新粒子特效和星空
+  // 1. 更新星空
   if (starfield) starfield.update();
-  starlights = starlights.filter(s => s.update());
 
   // 2. 交互状态处理
   if (gameState.cardMeshes.length > 0 && gameState.phase !== 'LOADING') {
@@ -727,7 +616,7 @@ const selectCard = () => {
 
   // 翻牌动画逻辑
   const flipAnimation = () => {
-    flipProgress += 0.03;
+    flipProgress += 0.015; // 减慢速度，增加仪式感
     const ease = 1 - Math.pow(1 - Math.min(flipProgress, 1), 3); // 缓动
 
     // 旋转到正面
@@ -775,45 +664,66 @@ const showResult = () => {
 };
 
 /**
- * 撤销卡牌显示，触发粒子升华动画
+ * 撤销卡牌显示，执行“放回原位”动画（开牌的逆过程）
  */
 const dismissCard = () => {
-  if (!gameState.selectedMesh) return;
-  const mesh = gameState.selectedMesh;
+  if (gameState.phase !== 'SHOWING' || !gameState.selectedMesh) return;
 
-  // 1. UI 动画控制
-  result.showNameReveal = false; // 先关闭入场大字
-  result.showSublimation = true; // 开启升华大字动画 (CSS 动画)
+  gameState.phase = 'FLIPPING'; // 进入翻转/动画状态，防止干扰
 
-  // 2. 3D 特效触发
-  starlights.push(new StarlightEffect(mesh.position.clone()));
-
-  // 【修复卡牌残留】
-  // 我们不再只是移除一张牌，而是决定“清理整个桌面”。
-  // 这样做可以确保没有“旧卡牌留着表面”的问题。
-  if (cardGroup) {
-    cardGroup.traverse((child) => {
-      if (child.isMesh) {
-        // 如果是正在选中的这张，让它在 3D 空间消失（粒子接管）
-        // 如果是其他残留牌，直接销毁
-        child.visible = false;
-      }
-    });
-  }
-
-  // 清理引用
-  gameState.cardMeshes[gameState.selectedIndex] = null;
-  gameState.selectedMesh = null;
-  gameState.selectedData = null;
+  // 1. UI 状态调整
+  result.showNameReveal = false;
   result.show = false;
+  statusText.value = "状态: 正在将卡牌归位...";
 
-  statusText.value = "状态: 灵感升华，准备下一轮...";
+  const mesh = gameState.selectedMesh;
+  const startPos = mesh.position.clone();
+  const startRot = mesh.rotation.clone();
+  const startScale = mesh.scale.x;
 
-  // 2.5 秒后（等动画结束），彻底清空并重新生成
-  setTimeout(() => {
-    result.showSublimation = false;
-    spawnAllCards(); // 彻底清理 cardGroup 并重新洗牌生成
-  }, 2500);
+  let progress = 0;
+  const returnAnimation = () => {
+    progress += 0.02; // 减慢归位速度，与翻牌速度匹配
+    const ease = 1 - Math.pow(1 - Math.min(progress, 1), 3); // Ease Out 效果
+
+    // 计算卡牌在轮播图中的目标位置数据
+    const i = gameState.selectedIndex;
+    let targetX = (i - CARD_COUNT / 2) * CARD_SPACING + gameState.scrollOffset;
+    // 确保处理无限循环逻辑，找到最近的 targetX
+    while (targetX > TOTAL_WIDTH / 2) targetX -= TOTAL_WIDTH;
+    while (targetX < -TOTAL_WIDTH / 2) targetX += TOTAL_WIDTH;
+
+    const distFromCenter = Math.abs(targetX);
+    const targetScale = THREE.MathUtils.lerp(1.15, 0.9, Math.min(distFromCenter / 8, 1));
+    const zOffset = THREE.MathUtils.lerp(1, 0, Math.min(distFromCenter / 8, 1));
+    const targetZ = -2 + zOffset;
+    const targetRotY = Math.PI + targetX * 0.05;
+    const targetRotZ = mesh.userData.isReversed ? Math.PI : 0;
+
+    // 执行插值动画
+    mesh.position.x = THREE.MathUtils.lerp(startPos.x, targetX, ease);
+    mesh.position.y = THREE.MathUtils.lerp(startPos.y, 0, ease);
+    mesh.position.z = THREE.MathUtils.lerp(startPos.z, targetZ, ease);
+
+    mesh.rotation.y = THREE.MathUtils.lerp(startRot.y, targetRotY, ease);
+    mesh.rotation.z = THREE.MathUtils.lerp(startRot.z, targetRotZ, ease);
+
+    const s = THREE.MathUtils.lerp(startScale, targetScale, ease);
+    mesh.scale.set(s, s, s);
+
+    if (progress < 1) {
+      requestAnimationFrame(returnAnimation);
+    } else {
+      // 动画结束，彻底归位
+      gameState.selectedMesh = null;
+      gameState.selectedData = null;
+      gameState.selectedIndex = -1;
+      gameState.phase = 'IDLE';
+      resetUIForNewRound();
+    }
+  };
+
+  returnAnimation();
 };
 
 const toggleMode = () => {
@@ -941,7 +851,10 @@ const initMediaPipe = () => {
 
   cameraPipe = new window.Camera(inputVideo.value, {
     onFrame: async () => {
-      await hands.send({ image: inputVideo.value });
+      // 安全检查：如果组件已卸载或视频元素丢失，不再向 MediaPipe 发送数据
+      if (inputVideo.value) {
+        await hands.send({ image: inputVideo.value });
+      }
     },
     width: 640,
     height: 480
@@ -977,8 +890,24 @@ onMounted(() => {
 onUnmounted(() => {
   // 必须清理掉动画和摄像头，否则组件销毁后依然会占用资源
   cancelAnimationFrame(animationId);
-  if (cameraPipe) cameraPipe.stop();
-  if (renderer) renderer.dispose();
+
+  if (cameraPipe) {
+    cameraPipe.stop();
+    cameraPipe = null;
+  }
+
+  if (hands) {
+    hands.close();
+    hands = null;
+  }
+
+  if (renderer) {
+    renderer.dispose();
+    if (renderer.domElement && renderer.domElement.parentNode) {
+      renderer.domElement.parentNode.removeChild(renderer.domElement);
+    }
+  }
+
   window.removeEventListener('resize', onWindowResize);
 });
 </script>
@@ -1181,7 +1110,8 @@ h1 {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  transition: opacity 0.5s;
+  transition: opacity 1s;
+  /* 减慢文字浮层出现速度 */
   pointer-events: none;
   width: 80%;
 }
@@ -1222,7 +1152,7 @@ h1 {
 
 /* show 状态：升华消失动画 */
 #card-name-reveal.show {
-  animation: revealName 2.5s ease-out forwards, shimmer 2s linear infinite;
+  animation: revealName 2.5s ease-out forwards, shimmer 4s linear infinite;
 }
 
 @keyframes revealName {
@@ -1254,7 +1184,8 @@ h1 {
 
 /* showing 状态：入场展示动画 */
 #card-name-reveal.showing {
-  animation: revealIn 0.8s ease-out forwards, shimmer 2s linear infinite;
+  animation: revealIn 1.5s ease-out forwards, shimmer 4s linear infinite;
+  /* shimmer 增加到 4s，更加缓慢优雅 */
 }
 
 @keyframes revealIn {
