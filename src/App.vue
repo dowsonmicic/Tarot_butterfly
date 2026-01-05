@@ -1,7 +1,7 @@
 <template>
   <div id="app-container">
-    <!-- <TarotScene /> -->
-    <TestCube />
+    <TarotScene />
+    <!-- <TestCube /> -->
   </div>
 </template>
 
