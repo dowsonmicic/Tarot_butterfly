@@ -147,8 +147,10 @@ onUnmounted(() => {
   // 3. 深度清理 Three.js 资源
   if (renderer) {
     renderer.dispose(); // 释放渲染器占用的 GPU 资源
-    // 将画布从网页中彻底移除
-    container.value.removeChild(renderer.domElement);
+    // 安全地将画布从网页中移除
+    if (renderer.domElement && renderer.domElement.parentNode) {
+      renderer.domElement.parentNode.removeChild(renderer.domElement);
+    }
   }
 });
 </script>

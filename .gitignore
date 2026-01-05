@@ -1,4 +1,4 @@
-.DS_Store
+https://github.com/dowsonmicic/Tarot_butterfly.git.DS_Store
 node_modules
 /dist
 
@@ -21,3 +21,5 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+# --allow-unrelated-histories
+# --force-with-lease
