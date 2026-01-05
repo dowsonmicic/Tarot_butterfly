@@ -94,8 +94,8 @@ const init = () => {
      *    - 增加 y：立方体就像在“原地转圈”，绕着垂直轴转动。
      * 两者结合，就形成了这种斜向的、看起来比较随机且动感的旋转效果。
      */
-    cube.rotation.x += 0.005; // 减慢旋转速度，从 0.01 降到 0.005
-    cube.rotation.y += 0.005;
+    cube.rotation.x += 0.01;
+    cube.rotation.y += 0.01;
 
     // 更新轨道控制器（如果你手动用鼠标拖拽了，这里会同步相机位置）
     controls.update();
@@ -147,7 +147,7 @@ onUnmounted(() => {
   // 3. 深度清理 Three.js 资源
   if (renderer) {
     renderer.dispose(); // 释放渲染器占用的 GPU 资源
-    // 【修复关键】安全地将画布从网页中移除
+    // 安全地将画布从网页中移除
     if (renderer.domElement && renderer.domElement.parentNode) {
       renderer.domElement.parentNode.removeChild(renderer.domElement);
     }
