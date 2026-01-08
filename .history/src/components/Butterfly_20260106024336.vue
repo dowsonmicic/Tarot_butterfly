@@ -1,8 +1,5 @@
 <template>
   <div ref="container" class="butterfly-container">
-    <!-- 性能监视组件：配置在右上角 -->
-    <StatsMonitor ref="statsRef" :mode="0" :position="{ top: '10px', right: '10px' }" />
-
     <div class="loading-overlay" v-if="loading">
       <div class="spinner"></div>
       <p>正在加载蝴蝶模型... {{ progress }}%</p>
@@ -17,7 +14,6 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'; // GLTF 模型加载器
-import StatsMonitor from './StatsMonitor.vue'; // 引入通用的性能监视组件
 
 // 使用 Vite 的 ?url 特性获取 3D 模型的正确引用路径
 import modelUrl from '../../resource/borboleta_azul_-_butterfly/scene.gltf?url';
@@ -26,7 +22,6 @@ import modelUrl from '../../resource/borboleta_azul_-_butterfly/scene.gltf?url';
 const container = ref(null); // 承载 Three.js 画布的 DOM 容器
 const loading = ref(true);     // 控制加载遮罩层的显示
 const progress = ref(0);      // 模型加载百分比进度
-const statsRef = ref(null);    // 性能监视组件引用
 
 // Three.js 核心对象（非响应式，避免性能损耗）
 let scene;          // 场景容器
@@ -217,9 +212,6 @@ const onWindowResize = () => {
  */
 const animate = () => {
   animationId = requestAnimationFrame(animate);
-
-  // 更新性能监视器
-  if (statsRef.value) statsRef.value.update();
 
   const delta = clock.getDelta(); // 获取两帧之间的时间间隔
   if (mixer) mixer.update(delta); // 推进骨骼动画进度

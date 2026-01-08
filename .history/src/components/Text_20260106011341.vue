@@ -177,9 +177,6 @@ const init = () => {
   initCanvasText();
 
   // 8. 添加网格辅助线（作为空间参考，让我们知道哪里是地面）
-  // three.js坐标轴颜色红R、绿G、蓝B分别对应坐标系的x、y、z轴，对于three.js的3D坐标系默认y轴朝上
-  const axesHelper = new THREE.AxesHelper(5);
-  scene.add(axesHelper);
   const grid = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
   grid.position.y = -2;
   scene.add(grid);
