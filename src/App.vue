@@ -5,6 +5,7 @@
     <TarotScene v-else-if="currentView === 'tarot'" />
     <TestCube v-else-if="currentView === 'cube'" />
     <Butterfly v-else-if="currentView === 'butterfly'" />
+    <GuiTest v-else-if="currentView === 'gui'" />
 
     <!-- 底部导航按钮 -->
     <div class="debug-nav">
@@ -12,6 +13,7 @@
       <button :class="{ active: currentView === 'text' }" @click="currentView = 'text'">文字演示</button>
       <button :class="{ active: currentView === 'cube' }" @click="currentView = 'cube'">测试立方体</button>
       <button :class="{ active: currentView === 'butterfly' }" @click="currentView = 'butterfly'">蓝蝴蝶 (GLTF)</button>
+      <button :class="{ active: currentView === 'gui' }" @click="currentView = 'gui'">GUI 交互测试</button>
     </div>
   </div>
 </template>
@@ -22,10 +24,11 @@ import TarotScene from './components/TarotScene.vue'
 import TestCube from './components/TestCube.vue'
 import Text from './components/Text.vue'
 import Butterfly from './components/Butterfly.vue'
+import GuiTest from './components/GuiTest.vue'
 
 // 使用字符串标记当前视图，更易于扩展
-// 可选值: 'tarot', 'cube', 'text', 'butterfly'
-const currentView = ref('butterfly') // 默认显示新加载的蝴蝶模型
+// 可选值: 'tarot', 'cube', 'text', 'butterfly', 'gui'
+const currentView = ref('gui') // 默认显示 GUI 测试组件
 </script>
 
 <style>

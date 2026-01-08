@@ -5,7 +5,10 @@
     使得我们可以直接操作这个真实的 <div> 元素，
     它是 Three.js 渲染器渲染出的 <canvas> 画布的“家”。
   -->
-  <div ref="container" class="test-cube-container"></div>
+  <div ref="container" class="test-cube-container">
+    <!-- 集成性能监视器：配置在左上角作为对比测试 -->
+    <StatsMonitor ref="statsRef" :mode="1" :position="{ top: '10px', right: '10px' }" />
+  </div>
 </template>
 
 <script setup>
@@ -15,9 +18,11 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import * as THREE from 'three'; // 引入整个 Three.js 核心库
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // 引入轨道控制器，允许用鼠标旋转相机
+import StatsMonitor from './StatsMonitor.vue'; // 引入性能监视组件
 
 // 声明变量，用于存储 Three.js 的核心组件
 const container = ref(null); // 对应模板中的 div 容器
+const statsRef = ref(null);    // 监视器引用
 let scene;        // 场景：所有 3D 物体的“世界”
 let camera;       // 相机：我们的“眼睛”，决定看到什么
 let renderer;     // 渲染器：负责把 3D 数据画成 2D 像素并显示在屏幕上
@@ -75,6 +80,9 @@ const init = () => {
     // 告诉浏览器：在下次重绘之前，再次调用这个 animate 函数
     // 这样就形成了一个无限循环，从而产生平滑的动画效果
     animationId = requestAnimationFrame(animate);
+
+    // 更新性能监视器
+    if (statsRef.value) statsRef.value.update();
 
     /**
      * 【详细解释立方体旋转逻辑】
